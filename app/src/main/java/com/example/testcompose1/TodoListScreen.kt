@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -34,6 +35,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
@@ -149,12 +151,29 @@ fun TodoListScreen(
                     ) { index ->
                         val todo = lazyPagingItems[index]
                         if (todo != null) {
+                            // 每个项独立管理对话框显示状态
+                            var showDeleteDialog by remember { mutableStateOf(false) }
+
                             TodoItemRow(
                                 todo = todo,
-                                onDelete = { viewModel.deleteTodo(todo) },
+                                onDelete = {
+//                                    viewModel.deleteTodo(todo)
+                                    // 点击删除按钮时，显示对话框，而不是直接删除
+                                    showDeleteDialog = true
+                                           },
                                 onToggle = { viewModel.toggleComplete(todo) },
                                 onClick = { onNavigateToDetail(todo.id) }
                             )
+
+                            // 确认删除对话框
+                            if (showDeleteDialog) {
+                                DeleteConfirmDialog(title = "确定删除", msg = "确定要删除“${todo.title}”吗？"
+                                    , positiveBtnText = "删除", negativeBtnText = "取消"
+                                    , onConfirm = {showDeleteDialog = false
+                                                   viewModel.deleteTodo(todo)
+                                                  }
+                                    , onDismiss = {showDeleteDialog = false})
+                            }
                         } else {
                             Spacer(Modifier.height(72.dp))
                         }
@@ -278,4 +297,30 @@ fun ThemeSwitch(settingsViewModel: SettingsViewModel) {
             onCheckedChange = { settingsViewModel.toggleDarkMode() }
         )
     }
+}
+
+@Composable
+fun DeleteConfirmDialog(
+    title: String,
+    msg: String,
+    positiveBtnText: String,
+    negativeBtnText: String,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = { Text(msg) },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text(positiveBtnText)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(negativeBtnText)
+            }
+        }
+    )
 }
