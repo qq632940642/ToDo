@@ -19,7 +19,7 @@ class TodoRepository(private val dao: TodoDao) {
          * 模拟网络/慢查询：每次分页 `load` 前暂停（毫秒）。
          * 设为 0 即关闭模拟耗时。
          */
-        const val SIMULATED_PAGE_LOAD_DELAY_MS = 1_200L
+        const val SIMULATED_PAGE_LOAD_DELAY_MS = 300L
     }
 
     fun getAllTodos(): Flow<List<TodoEntity>> = dao.getAllTodos()

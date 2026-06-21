@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -55,6 +56,9 @@ import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.paging.compose.itemKey
 import com.example.testcompose1.data.TodoEntity
 import com.example.testcompose1.data.TodoRepository
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material.icons.filled.Add
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class, ExperimentalMaterialApi::class)
 @Composable
@@ -64,7 +68,7 @@ fun TodoListScreen(
     onNavigateToDetail: (Int) -> Unit = {}
 ) {
     var showInfiniteList by remember { mutableStateOf(false) }
-    if (showInfiniteList) {
+    if (showInfiniteList) { // 测试无限滚动列表
         Scaffold(
             topBar = {
                 TopAppBar(
@@ -82,6 +86,10 @@ fun TodoListScreen(
             }
         }
     } else {
+        // 主界面开始
+        var showAddDialog by remember { mutableStateOf(false) } // 显示添加弹框
+        var inputText by remember { mutableStateOf("") }
+
         val lazyPagingItems = viewModel.todoPagingFlow.collectAsLazyPagingItems()
 
         // 已有数据时的下拉刷新才显示指示器，避免首屏空白时一直转圈
@@ -92,140 +100,173 @@ fun TodoListScreen(
             onRefresh = { lazyPagingItems.refresh() }
         )
 
-        var text by remember { mutableStateOf("") }
+        val totalCount by viewModel.totalCount.collectAsState()
+        val completedCount by viewModel.completedCount.collectAsState()
 
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp)
-        ) {
-            ThemeSwitch(settingsViewModel)
-            Spacer(modifier = Modifier.height(8.dp))
-            TextField(
-                value = text,
-                onValueChange = { text = it },
-                label = { Text("输入待办事项") },
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = MaterialTheme.colorScheme.surface,
-                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                    focusedIndicatorColor = MaterialTheme.colorScheme.primary,
-                    unfocusedIndicatorColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                ),
-                modifier = Modifier.fillMaxWidth()
-            )
-            Button(
-                onClick = {
-                    viewModel.addTodo(text)
-                    text = ""
-                },
-                shape = MaterialTheme.shapes.small,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
-                ),
-                modifier = Modifier.padding(top = 8.dp)
+        Scaffold(floatingActionButton = {
+            FloatingActionButton(
+                onClick = { showAddDialog = true },
+                containerColor = MaterialTheme.colorScheme.primary
             ) {
-                Text("添加")
+                Icon(Icons.Default.Add, contentDescription = "添加待办")
             }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            val totalCount by viewModel.totalCount.collectAsState()
-            val completedCount by viewModel.completedCount.collectAsState()
-
-            Text("待办列表（每页 ${TodoRepository.PAGE_SIZE} 条，已完成:${completedCount},总数:${totalCount}）", style = MaterialTheme.typography.titleMedium)
-
-            Box(
+        }) {paddingValues ->
+            Column(
                 modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .padding(horizontal = 16.dp)
             ) {
-                LazyColumn(
+                ThemeSwitch(settingsViewModel)
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text("待办列表（每页${TodoRepository.PAGE_SIZE}条，已完成:${completedCount},总数:${totalCount}）", style = MaterialTheme.typography.titleMedium)
+                Box(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .pullRefresh(pullRefreshState)
+                        .weight(1f)
+                        .fillMaxWidth()
                 ) {
-                    items(
-                        count = lazyPagingItems.itemCount,
-                        key = lazyPagingItems.itemKey { it.id }
-                    ) { index ->
-                        val todo = lazyPagingItems[index]
-                        if (todo != null) {
-                            // 每个项独立管理对话框显示状态
-                            var showDeleteDialog by remember { mutableStateOf(false) }
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .pullRefresh(pullRefreshState)
+                        ,contentPadding = PaddingValues(bottom = 80.dp) // 底部内边距，防止最后一条数据的删除按钮被悬浮的添加按钮遮挡。
+                    ) {
+                        items(
+                            count = lazyPagingItems.itemCount,
+                            key = lazyPagingItems.itemKey { it.id }
+                        ) { index ->
+                            val todo = lazyPagingItems[index]
+                            if (todo != null) {
+                                // 每个项独立管理对话框显示状态
+                                var showDeleteDialog by remember { mutableStateOf(false) }
 
-                            TodoItemRow(
-                                todo = todo,
-                                onDelete = {
+                                TodoItemRow(
+                                    todo = todo,
+                                    onDelete = {
 //                                    viewModel.deleteTodo(todo)
-                                    // 点击删除按钮时，显示对话框，而不是直接删除
-                                    showDeleteDialog = true
-                                           },
-                                onToggle = { viewModel.toggleComplete(todo) },
-                                onClick = { onNavigateToDetail(todo.id) }
-                            )
-
-                            // 确认删除对话框
-                            if (showDeleteDialog) {
-                                DeleteConfirmDialog(title = "确定删除", msg = "确定要删除“${todo.title}”吗？"
-                                    , positiveBtnText = "删除", negativeBtnText = "取消"
-                                    , onConfirm = {showDeleteDialog = false
-                                                   viewModel.deleteTodo(todo)
-                                                  }
-                                    , onDismiss = {showDeleteDialog = false})
-                            }
-                        } else {
-                            Spacer(Modifier.height(72.dp))
-                        }
-                    }
-
-                    item {
-                        when (val append = lazyPagingItems.loadState.append) {
-                            is LoadState.Loading -> {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(16.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    CircularProgressIndicator()
-                                }
-                            }
-
-                            is LoadState.Error -> {
-                                Text(
-                                    text = "加载更多失败：${append.error.localizedMessage}",
-                                    color = MaterialTheme.colorScheme.error,
-                                    modifier = Modifier.padding(16.dp)
+                                        // 点击删除按钮时，显示对话框，而不是直接删除
+                                        showDeleteDialog = true
+                                    },
+                                    onToggle = { viewModel.toggleComplete(todo) },
+                                    onClick = { onNavigateToDetail(todo.id) }
                                 )
-                            }
 
-                            else -> {}
+                                // 确认删除对话框
+                                if (showDeleteDialog) {
+                                    DeleteConfirmDialog(title = "确定删除", msg = "确定要删除“${todo.title}”吗？"
+                                        , positiveBtnText = "删除", negativeBtnText = "取消"
+                                        , onConfirm = {showDeleteDialog = false
+                                            viewModel.deleteTodo(todo)
+                                        }
+                                        , onDismiss = {showDeleteDialog = false})
+                                }
+                            } else {
+                                Spacer(Modifier.height(72.dp))
+                            }
+                        }
+
+                        item {
+                            when (val append = lazyPagingItems.loadState.append) {
+                                is LoadState.Loading -> {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(16.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        CircularProgressIndicator()
+                                    }
+                                }
+
+                                is LoadState.Error -> {
+                                    Text(
+                                        text = "加载更多失败：${append.error.localizedMessage}",
+                                        color = MaterialTheme.colorScheme.error,
+                                        modifier = Modifier.padding(16.dp)
+                                    )
+                                }
+
+                                else -> {}
+                            }
                         }
                     }
-                }
 
-                PullRefreshIndicator(
-                    refreshing = pullRefreshing,
-                    state = pullRefreshState,
-                    modifier = Modifier.align(Alignment.TopCenter)
-                )
-
-                if (lazyPagingItems.loadState.refresh is LoadState.Loading && lazyPagingItems.itemCount == 0) {
-                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-                }
-
-                val refreshError = lazyPagingItems.loadState.refresh as? LoadState.Error
-                if (refreshError != null && lazyPagingItems.itemCount == 0) {
-                    Text(
-                        text = "加载失败：${refreshError.error.localizedMessage}",
-                        color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.align(Alignment.Center)
+                    PullRefreshIndicator( // 呈现刷新动画
+                        refreshing = pullRefreshing,
+                        state = pullRefreshState,
+                        modifier = Modifier.align(Alignment.TopCenter)
                     )
+
+                    if (lazyPagingItems.loadState.refresh is LoadState.Loading && lazyPagingItems.itemCount == 0) {
+                        CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                    }
+
+                    val refreshError = lazyPagingItems.loadState.refresh as? LoadState.Error
+                    if (refreshError != null && lazyPagingItems.itemCount == 0) {
+                        Text(
+                            text = "加载失败：${refreshError.error.localizedMessage}",
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.align(Alignment.Center)
+                        )
+                    }
                 }
             }
         }
+
+        if (showAddDialog) {
+            AddTodoDialog(
+                onAdd = { title ->
+                    viewModel.addTodo(title)
+                    showAddDialog = false
+                },
+                onDismiss = { showAddDialog = false }
+            )
+        }
     }
+}
+
+@Composable
+fun AddTodoDialog(
+    onAdd: (String) -> Unit,   // 添加回调，传入标题
+    onDismiss: () -> Unit      // 关闭回调
+) {
+    var inputText by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("新增待办") },
+        text = {
+            OutlinedTextField(
+                value = inputText,
+                onValueChange = { inputText = it },
+                label = { Text("待办标题") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    if (inputText.isNotBlank()) {
+                        onAdd(inputText)
+                        // 由父组件负责关闭对话框
+                    }
+                }
+            ) {
+                Text("添加")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = {
+                // 取消时清空输入并关闭
+                inputText = ""
+                onDismiss()
+            }) {
+                Text("取消")
+            }
+        }
+    )
 }
 
 @Composable
