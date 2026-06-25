@@ -18,6 +18,14 @@ interface TodoDao {
     @Query("SELECT * FROM todo_items ORDER BY createdAt DESC")
     fun getTodosPaged(): PagingSource<Int, TodoEntity>
 
+    @Query("""
+    SELECT * FROM todo_items 
+    WHERE title LIKE '%' || :query || '%' 
+       OR description LIKE '%' || :query || '%' 
+    ORDER BY createdAt DESC
+""")
+    fun getTodosPaged(query: String): PagingSource<Int, TodoEntity> // 模糊查询
+
     @Query("SELECT * FROM todo_items WHERE id = :id")
     suspend fun getTodoById(id: Int): TodoEntity?   // 挂起函数，返回单个待办
 

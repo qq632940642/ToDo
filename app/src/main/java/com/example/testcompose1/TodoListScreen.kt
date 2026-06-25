@@ -59,6 +59,8 @@ import com.example.testcompose1.data.TodoRepository
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Search
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class, ExperimentalMaterialApi::class)
 @Composable
@@ -118,6 +120,33 @@ fun TodoListScreen(
                     .padding(horizontal = 16.dp)
             ) {
                 ThemeSwitch(settingsViewModel)
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // --- 新增搜索框 ---
+                var searchText by remember { mutableStateOf("") }
+                OutlinedTextField(
+                    value = searchText,
+                    onValueChange = { newText ->
+                        searchText = newText
+                        viewModel.updateSearchQuery(newText)   // 实时更新搜索关键词
+                    },
+                    label = { Text("搜索待办") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    leadingIcon = {
+                        Icon(Icons.Default.Search, contentDescription = null)
+                    },
+                    trailingIcon = {
+                        if (searchText.isNotEmpty()) {
+                            IconButton(onClick = {
+                                searchText = ""
+                                viewModel.updateSearchQuery("")
+                            }) {
+                                Icon(Icons.Default.Close, contentDescription = "清除")
+                            }
+                        }
+                    }
+                )
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text("待办列表（每页${TodoRepository.PAGE_SIZE}条，已完成:${completedCount},总数:${totalCount}）", style = MaterialTheme.typography.titleMedium)
@@ -189,6 +218,22 @@ fun TodoListScreen(
 
                                 else -> {}
                             }
+                        }
+                    }
+
+                    // 搜索数据为空的提示：
+                    if (lazyPagingItems.itemCount == 0 && !pullRefreshing) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "没有找到匹配的待办项",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                     }
 

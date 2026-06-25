@@ -75,4 +75,6 @@ dependencies {
     implementation(libs.androidx.paging.runtime)
     implementation(libs.androidx.paging.compose)
     implementation(libs.androidx.room.paging)
+
+    implementation("androidx.compose.material:material-icons-extended")
 }

@@ -13,7 +13,7 @@ class TodoRepository(private val dao: TodoDao) {
 
     companion object {
         /** 每页条数：上拉每次加载的数量 */
-        const val PAGE_SIZE = 7
+        const val PAGE_SIZE = 9
 
         /**
          * 模拟网络/慢查询：每次分页 `load` 前暂停（毫秒）。
@@ -24,18 +24,20 @@ class TodoRepository(private val dao: TodoDao) {
 
     fun getAllTodos(): Flow<List<TodoEntity>> = dao.getAllTodos()
 
-    fun getTodosPaged(): Flow<PagingData<TodoEntity>> = Pager(
+    fun getTodosPaged(query: String = ""): Flow<PagingData<TodoEntity>> = Pager(
         config = PagingConfig(
             pageSize = PAGE_SIZE,
-            initialLoadSize = PAGE_SIZE,
-            prefetchDistance = 1,
+//            initialLoadSize = PAGE_SIZE,
+//            prefetchDistance = 1,
             enablePlaceholders = false
         ),
         pagingSourceFactory = {
-            DelayingPagingSource(
-                delegate = dao.getTodosPaged(),
-                delayMs = SIMULATED_PAGE_LOAD_DELAY_MS
-            )
+            // 模拟延迟，为了能看到加载动画
+//            DelayingPagingSource(
+//                delegate = dao.getTodosPaged(),
+//                delayMs = SIMULATED_PAGE_LOAD_DELAY_MS
+//            )
+            dao.getTodosPaged(query)
         }
     ).flow
 
