@@ -61,6 +61,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.runtime.LaunchedEffect
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class, ExperimentalMaterialApi::class)
 @Composable
@@ -123,11 +124,16 @@ fun TodoListScreen(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 // --- 新增搜索框 ---
-                var searchText by remember { mutableStateOf("") }
+//                var searchText by remember { mutableStateOf("") }
+//                LaunchedEffect(Unit) {// 当从待办事项详情页面返回时，又调用了，而且searchText打印为空字符串
+//                    println("remember searchText initialized, value = $searchText")
+//                }
+                // 直接从 ViewModel 读取搜索词
+                val searchText by viewModel.searchQuery.collectAsState()
                 OutlinedTextField(
                     value = searchText,
                     onValueChange = { newText ->
-                        searchText = newText
+//                        searchText = newText
                         viewModel.updateSearchQuery(newText)   // 实时更新搜索关键词
                     },
                     label = { Text("搜索待办") },
@@ -139,7 +145,7 @@ fun TodoListScreen(
                     trailingIcon = {
                         if (searchText.isNotEmpty()) {
                             IconButton(onClick = {
-                                searchText = ""
+//                                searchText = ""
                                 viewModel.updateSearchQuery("")
                             }) {
                                 Icon(Icons.Default.Close, contentDescription = "清除")
